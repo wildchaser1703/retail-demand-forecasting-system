@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  forecasting:
+    build: .
+    container_name: retail-forecasting
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=./mlruns
+    command: python scripts/run_pipeline.py
+
+  mlflow:
+    image: python:3.10-slim
+    container_name: mlflow-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    command: >
+      sh -c "pip install mlflow &&
+             mlflow server --backend-store-uri /mlruns --host 0.0.0.0 --port 5000"
