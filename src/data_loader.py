@@ -125,13 +125,15 @@ def split_train_test(
 
     # Calculate split dates
     max_date = df[date_column].max()
-    test_start = max_date - pd.Timedelta(weeks=test_weeks)
+    # The test set should end at max_date (inclusive), so its start is (max_date + 1 day) - weeks
+    test_end = max_date + pd.Timedelta(days=1)
+    test_start = test_end - pd.Timedelta(weeks=test_weeks)
     val_start = test_start - pd.Timedelta(weeks=validation_weeks)
 
     # Split data
     train_df = df[df[date_column] < val_start].copy()
     val_df = df[(df[date_column] >= val_start) & (df[date_column] < test_start)].copy()
-    test_df = df[df[date_column] >= test_start].copy()
+    test_df = df[(df[date_column] >= test_start) & (df[date_column] < test_end)].copy()
 
     return train_df, val_df, test_df
 
