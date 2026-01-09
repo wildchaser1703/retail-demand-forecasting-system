@@ -1,9 +1,9 @@
 """
 Facebook Prophet model for time series forecasting.
 """
+
 import pandas as pd
-import numpy as np
-from typing import Optional, List
+from typing import Optional
 from prophet import Prophet
 import warnings
 
@@ -82,9 +82,7 @@ class ProphetForecaster:
         pd.DataFrame
             Dataframe in Prophet format (ds, y columns).
         """
-        prophet_df = pd.DataFrame(
-            {"ds": pd.to_datetime(df[date_col]), "y": df[target_col].values}
-        )
+        prophet_df = pd.DataFrame({"ds": pd.to_datetime(df[date_col]), "y": df[target_col].values})
 
         # Add regressors if they exist
         for regressor in self.regressors:
@@ -202,7 +200,9 @@ class ProphetForecaster:
         if include_history:
             future = self.model.make_future_dataframe(periods=steps, freq=freq)
         else:
-            future = self.model.make_future_dataframe(periods=steps, freq=freq, include_history=False)
+            future = self.model.make_future_dataframe(
+                periods=steps, freq=freq, include_history=False
+            )
 
         # Add future regressor values if provided
         if future_regressors is not None:

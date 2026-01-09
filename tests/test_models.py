@@ -1,6 +1,7 @@
 """
 Unit tests for baseline models.
 """
+
 import pytest
 import numpy as np
 import sys
@@ -8,7 +9,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.baselines import (
+from src.baselines import (  # noqa: E402
     naive_forecast,
     seasonal_naive_forecast,
     moving_average_forecast,

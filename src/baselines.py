@@ -1,9 +1,9 @@
 """
 Baseline forecasting models for retail demand forecasting.
 """
-import pandas as pd
+
 import numpy as np
-from typing import Sequence, Optional
+from typing import Sequence
 
 
 def naive_forecast(series: Sequence[float], horizon: int) -> list[float]:
@@ -58,9 +58,7 @@ def seasonal_naive_forecast(
     return forecasts
 
 
-def moving_average_forecast(
-    series: Sequence[float], horizon: int, window: int = 7
-) -> list[float]:
+def moving_average_forecast(series: Sequence[float], horizon: int, window: int = 7) -> list[float]:
     """
     Moving average forecast: uses average of last N values.
 
@@ -134,7 +132,8 @@ class BaselineForecaster:
         Parameters
         ----------
         method : str, default='seasonal_naive'
-            Forecasting method: 'naive', 'seasonal_naive', 'moving_average', or 'exponential_smoothing'.
+            Forecasting method: 'naive', 'seasonal_naive', 'moving_average',
+            or 'exponential_smoothing'.
         **kwargs : dict
             Additional parameters for the chosen method.
         """
@@ -210,4 +209,3 @@ class BaselineForecaster:
         """
         self.fit(series)
         return self.predict(horizon)
-

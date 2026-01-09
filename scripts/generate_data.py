@@ -1,17 +1,17 @@
 """
 Generate realistic retail sales data with seasonality, trends, and promotions.
 """
+
 import argparse
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.config import config
+from src.config import config  # noqa: E402
 
 
 def generate_store_metadata(num_stores: int, random_state: int = 42) -> pd.DataFrame:
@@ -161,7 +161,9 @@ def generate_time_series(
     noise = np.random.normal(0, noise_level * base_value, num_days)
 
     # Combine all components
-    series = base_value + trend + weekly_seasonality + monthly_seasonality + yearly_seasonality + noise
+    series = (
+        base_value + trend + weekly_seasonality + monthly_seasonality + yearly_seasonality + noise
+    )
 
     return series
 
@@ -223,9 +225,7 @@ def main():
     parser.add_argument(
         "--end-date", type=str, default=config.data.end_date, help="End date (YYYY-MM-DD)"
     )
-    parser.add_argument(
-        "--seed", type=int, default=config.data.random_seed, help="Random seed"
-    )
+    parser.add_argument("--seed", type=int, default=config.data.random_seed, help="Random seed")
 
     args = parser.parse_args()
 

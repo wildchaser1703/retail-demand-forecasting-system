@@ -1,14 +1,14 @@
 """
 Visualization utilities for forecasting results.
 """
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objects as go
 import plotly.express as px
-from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 
 # Set style
 sns.set_style("whitegrid")

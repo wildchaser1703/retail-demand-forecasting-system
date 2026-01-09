@@ -1,16 +1,16 @@
 """
 Unit tests for feature engineering module.
 """
+
 import pytest
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.feature_engineering import FeatureEngineer
+from src.feature_engineering import FeatureEngineer  # noqa: E402
 
 
 @pytest.fixture
@@ -125,9 +125,7 @@ def test_grouped_lag_features(sample_data):
     combined = pd.concat([sample_data, sample_data_2], ignore_index=True)
 
     engineer = FeatureEngineer(combined, date_column="date")
-    result = engineer.add_lag_features(
-        target_column="sales", lags=[1], group_columns=["store_id"]
-    )
+    result = engineer.add_lag_features(target_column="sales", lags=[1], group_columns=["store_id"])
 
     # Check that lags are computed within groups
     store_1_data = result[result["store_id"] == 1]

@@ -1,6 +1,7 @@
 """
 Data preprocessing utilities for retail sales forecasting.
 """
+
 from typing import Optional, Tuple
 import pandas as pd
 import numpy as np

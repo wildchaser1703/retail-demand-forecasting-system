@@ -1,10 +1,10 @@
 """
 Feature engineering for retail demand forecasting.
 """
+
 from typing import List, Optional
 import pandas as pd
 import numpy as np
-from datetime import datetime
 
 
 class FeatureEngineer:
@@ -161,9 +161,9 @@ class FeatureEngineer:
 
         if group_columns:
             for lag in lags:
-                df[f"{target_column}_lag_{lag}"] = df.groupby(group_columns)[
-                    target_column
-                ].shift(lag)
+                df[f"{target_column}_lag_{lag}"] = df.groupby(group_columns)[target_column].shift(
+                    lag
+                )
         else:
             for lag in lags:
                 df[f"{target_column}_lag_{lag}"] = df[target_column].shift(lag)
@@ -239,7 +239,9 @@ class FeatureEngineer:
                         )
                 else:
                     if stat == "mean":
-                        df[col_name] = df[target_column].rolling(window=window, min_periods=1).mean()
+                        df[col_name] = (
+                            df[target_column].rolling(window=window, min_periods=1).mean()
+                        )
                     elif stat == "std":
                         df[col_name] = df[target_column].rolling(window=window, min_periods=1).std()
                     elif stat == "min":

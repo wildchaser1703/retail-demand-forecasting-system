@@ -1,10 +1,10 @@
 """
 Data loading utilities for retail sales data.
 """
+
 from pathlib import Path
 from typing import Optional, Tuple
 import pandas as pd
-import numpy as np
 
 
 def load_sales_data(

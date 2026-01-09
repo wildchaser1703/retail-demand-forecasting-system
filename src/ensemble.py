@@ -1,9 +1,9 @@
 """
 Ensemble methods for combining multiple forecasting models.
 """
+
 import numpy as np
-import pandas as pd
-from typing import List, Dict, Optional
+from typing import Dict, Optional
 from sklearn.linear_model import LinearRegression
 
 
@@ -196,7 +196,7 @@ class AdaptiveEnsemble:
                 avg_errors[name] = 1.0
             else:
                 # Apply exponential decay
-                weights = np.array([self.decay_factor ** i for i in range(len(errors) - 1, -1, -1)])
+                weights = np.array([self.decay_factor**i for i in range(len(errors) - 1, -1, -1)])
                 weights = weights / weights.sum()
                 avg_errors[name] = np.average(errors, weights=weights)
 

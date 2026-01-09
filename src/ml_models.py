@@ -1,9 +1,10 @@
 """
 Machine Learning models for time series forecasting.
 """
+
 import numpy as np
 import pandas as pd
-from typing import Optional, Dict, List
+from typing import Optional, List
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
@@ -119,8 +120,9 @@ class MLForecaster:
                 if self.model_type == "xgboost":
                     fit_params["early_stopping_rounds"] = early_stopping_rounds
                 else:  # lightgbm
+                    lgbm = __import__("lightgbm")
                     fit_params["callbacks"] = [
-                        __import__("lightgbm").early_stopping(early_stopping_rounds, verbose=verbose)
+                        lgbm.early_stopping(early_stopping_rounds, verbose=verbose)
                     ]
 
             self.model.fit(X, y, **fit_params)
@@ -349,9 +351,7 @@ class TimeSeriesMLForecaster:
             eval_set = [(X_eval, y_eval)]
 
         # Fit model
-        self.forecaster.fit(
-            X, y, eval_set=eval_set, early_stopping_rounds=early_stopping_rounds
-        )
+        self.forecaster.fit(X, y, eval_set=eval_set, early_stopping_rounds=early_stopping_rounds)
 
         return self
 

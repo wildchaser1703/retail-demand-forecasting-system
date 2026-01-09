@@ -1,32 +1,28 @@
 """
 Main training pipeline for retail demand forecasting.
 """
+
 import argparse
 import sys
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import warnings
 from datetime import datetime
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.config import config
-from src.data_loader import load_sales_data, load_metadata, split_train_test
-from src.data_validation import DataValidator
-from src.preprocessing import DataPreprocessor
-from src.feature_engineering import FeatureEngineer
-from src.baselines import BaselineForecaster
-from src.var_model import VARForecaster
-from src.arima_models import ARIMAForecaster
-from src.prophet_model import ProphetForecaster
-from src.ml_models import MLForecaster
-from src.ensemble import SimpleEnsemble
-from src.evaluation import ModelEvaluator, compute_metrics
-from src.mlflow_utils import MLflowTracker, log_forecast_experiment
-from src.visualization import plot_forecast, plot_model_comparison
+from src.config import config  # noqa: E402
+from src.data_loader import load_sales_data, split_train_test  # noqa: E402
+from src.data_validation import DataValidator  # noqa: E402
+from src.feature_engineering import FeatureEngineer  # noqa: E402
+from src.baselines import BaselineForecaster  # noqa: E402
+from src.ml_models import MLForecaster  # noqa: E402
+from src.ensemble import SimpleEnsemble  # noqa: E402
+from src.evaluation import ModelEvaluator  # noqa: E402
+from src.mlflow_utils import MLflowTracker  # noqa: E402
 
-import warnings
 warnings.filterwarnings("ignore")
 
 
@@ -89,9 +85,17 @@ def prepare_data(df: pd.DataFrame):
         validation_weeks=config.data.validation_weeks,
     )
 
-    print(f"Train set: {len(train_df)} records ({train_df['date'].min()} to {train_df['date'].max()})")
-    print(f"Validation set: {len(val_df)} records ({val_df['date'].min()} to {val_df['date'].max()})")
-    print(f"Test set: {len(test_df)} records ({test_df['date'].min()} to {test_df['date'].max()})")
+    print(
+        f"Train set: {len(train_df)} records "
+        f"({train_df['date'].min()} to {train_df['date'].max()})"
+    )
+    print(
+        f"Validation set: {len(val_df)} records "
+        f"({val_df['date'].min()} to {val_df['date'].max()})"
+    )
+    print(
+        f"Test set: {len(test_df)} records " f"({test_df['date'].min()} to {test_df['date'].max()})"
+    )
 
     return train_df, val_df, test_df
 
@@ -116,7 +120,8 @@ def engineer_features(train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.
     # Split back
     train_featured = featured_df[featured_df["date"] < val_df["date"].min()].copy()
     val_featured = featured_df[
-        (featured_df["date"] >= val_df["date"].min()) & (featured_df["date"] < test_df["date"].min())
+        (featured_df["date"] >= val_df["date"].min())
+        & (featured_df["date"] < test_df["date"].min())
     ].copy()
     test_featured = featured_df[featured_df["date"] >= test_df["date"].min()].copy()
 
@@ -170,7 +175,9 @@ def train_baseline_models(train_df: pd.DataFrame, test_df: pd.DataFrame, evaluat
     }
 
 
-def train_ml_models(train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame, evaluator: ModelEvaluator):
+def train_ml_models(
+    train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame, evaluator: ModelEvaluator
+):
     """Train ML models."""
     print("\n" + "=" * 60)
     print("Training Machine Learning Models")
@@ -192,7 +199,9 @@ def train_ml_models(train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.Da
     # XGBoost
     print("\n1. XGBoost")
     xgb_model = MLForecaster(model_type="xgboost", **config.model.xgb_params)
-    xgb_model.fit(X_train, y_train, eval_set=[(X_val, y_val)], early_stopping_rounds=10, verbose=False)
+    xgb_model.fit(
+        X_train, y_train, eval_set=[(X_val, y_val)], early_stopping_rounds=10, verbose=False
+    )
     xgb_forecast = xgb_model.predict(X_test)
     evaluator.evaluate_model("XGBoost", y_test.values, xgb_forecast, y_train.values)
     forecasts["XGBoost"] = xgb_forecast
@@ -200,7 +209,9 @@ def train_ml_models(train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.Da
     # LightGBM
     print("2. LightGBM")
     lgb_model = MLForecaster(model_type="lightgbm", **config.model.lgb_params)
-    lgb_model.fit(X_train, y_train, eval_set=[(X_val, y_val)], early_stopping_rounds=10, verbose=False)
+    lgb_model.fit(
+        X_train, y_train, eval_set=[(X_val, y_val)], early_stopping_rounds=10, verbose=False
+    )
     lgb_forecast = lgb_model.predict(X_test)
     evaluator.evaluate_model("LightGBM", y_test.values, lgb_forecast, y_train.values)
     forecasts["LightGBM"] = lgb_forecast
@@ -247,10 +258,9 @@ def main():
     print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     # Initialize MLflow if requested
-    tracker = None
     if args.use_mlflow:
         print("\nInitializing MLflow...")
-        tracker = MLflowTracker(
+        MLflowTracker(
             experiment_name=config.mlflow.experiment_name,
             tracking_uri=config.mlflow.tracking_uri,
         )
@@ -275,13 +285,13 @@ def main():
         all_forecasts.update(baseline_forecasts)
 
     if not args.skip_ml:
-        ml_forecasts, ml_models = train_ml_models(train_featured, val_featured, test_featured, evaluator)
+        ml_forecasts, _ = train_ml_models(train_featured, val_featured, test_featured, evaluator)
         all_forecasts.update(ml_forecasts)
 
     # Train ensemble
     if len(all_forecasts) > 1:
         test_series = test_df.groupby("date")["sales"].sum().values
-        ensemble_forecast = train_ensemble(all_forecasts, test_series, evaluator)
+        train_ensemble(all_forecasts, test_series, evaluator)
 
     # Display results
     print("\n" + "=" * 60)

@@ -1,14 +1,14 @@
 """
 Unit tests for evaluation metrics.
 """
-import pytest
+
 import numpy as np
 import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.evaluation import mae, rmse, mape, smape, mase, compute_metrics
+from src.evaluation import mae, rmse, mape, smape, mase, compute_metrics  # noqa: E402
 
 
 def test_mae():

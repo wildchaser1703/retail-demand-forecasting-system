@@ -1,6 +1,7 @@
 """
 Data validation and quality checks for retail sales data.
 """
+
 from typing import Dict, List, Optional
 import pandas as pd
 import numpy as np
@@ -79,9 +80,7 @@ class DataValidator:
                     )
                     valid = False
                 else:
-                    self.warnings.append(
-                        f"Column '{col}' has {missing_pct:.1%} missing values"
-                    )
+                    self.warnings.append(f"Column '{col}' has {missing_pct:.1%} missing values")
 
         return valid
 
@@ -116,15 +115,11 @@ class DataValidator:
         if all(col in self.df.columns for col in ["date", "store_id", "product_id"]):
             duplicates = self.df.duplicated(subset=["date", "store_id", "product_id"]).sum()
             if duplicates > 0:
-                self.errors.append(
-                    f"Found {duplicates} duplicate date-store-product combinations"
-                )
+                self.errors.append(f"Found {duplicates} duplicate date-store-product combinations")
                 valid = False
 
         # Check for gaps in time series
-        date_range = pd.date_range(
-            start=self.df["date"].min(), end=self.df["date"].max(), freq="D"
-        )
+        date_range = pd.date_range(start=self.df["date"].min(), end=self.df["date"].max(), freq="D")
         expected_days = len(date_range)
         actual_days = self.df["date"].nunique()
 
@@ -187,9 +182,7 @@ class DataValidator:
         )
 
 
-def detect_outliers(
-    series: pd.Series, method: str = "iqr", threshold: float = 3.0
-) -> pd.Series:
+def detect_outliers(series: pd.Series, method: str = "iqr", threshold: float = 3.0) -> pd.Series:
     """
     Detect outliers in a series.
 

@@ -1,14 +1,13 @@
 """
 MLflow integration utilities for experiment tracking and model management.
 """
+
 import mlflow
 import mlflow.sklearn
 import mlflow.pyfunc
-from pathlib import Path
 from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
-import json
 
 
 class MLflowTracker:
@@ -224,7 +223,9 @@ class MLflowTracker:
                 items.append((new_key, v))
         return dict(items)
 
-    def get_best_run(self, metric: str = "mae", ascending: bool = True) -> Optional[mlflow.entities.Run]:
+    def get_best_run(
+        self, metric: str = "mae", ascending: bool = True
+    ) -> Optional[mlflow.entities.Run]:
         """
         Get the best run based on a metric.
 

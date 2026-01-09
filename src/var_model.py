@@ -1,12 +1,11 @@
 """
 Vector AutoRegression (VAR) model for multivariate time series forecasting.
 """
-import numpy as np
+
 import pandas as pd
 from typing import Optional, Tuple
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.stattools import adfuller, grangercausalitytests
-from statsmodels.tools.eval_measures import aic, bic
 
 
 class VARForecaster:
@@ -240,7 +239,9 @@ class VARForecaster:
                     )
 
                     # Extract p-values
-                    p_values = [test_result[lag][0]["ssr_ftest"][1] for lag in range(1, max_lag + 1)]
+                    p_values = [
+                        test_result[lag][0]["ssr_ftest"][1] for lag in range(1, max_lag + 1)
+                    ]
                     min_p_value = min(p_values)
 
                     results[f"{var1} -> {var2}"] = {

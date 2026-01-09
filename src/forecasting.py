@@ -1,6 +1,7 @@
 """
 Unified forecasting interface and pipeline.
 """
+
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
@@ -228,9 +229,7 @@ class MultiSeriesForecaster:
         self.is_fitted = True
         return self
 
-    def predict(
-        self, steps: int, groups: Optional[list] = None, **kwargs
-    ) -> pd.DataFrame:
+    def predict(self, steps: int, groups: Optional[list] = None, **kwargs) -> pd.DataFrame:
         """
         Generate forecasts for all or specified groups.
 

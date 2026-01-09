@@ -1,6 +1,7 @@
 """
 Unit tests for data loading module.
 """
+
 import pytest
 import pandas as pd
 import numpy as np
@@ -10,7 +11,7 @@ import tempfile
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.data_loader import load_sales_data, split_train_test, aggregate_sales
+from src.data_loader import load_sales_data, split_train_test, aggregate_sales  # noqa: E402
 
 
 @pytest.fixture

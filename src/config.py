@@ -1,6 +1,7 @@
 """
 Configuration management for the retail demand forecasting system.
 """
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
