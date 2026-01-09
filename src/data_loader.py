@@ -3,12 +3,12 @@ Data loading utilities for retail sales data.
 """
 
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 import pandas as pd
 
 
 def load_sales_data(
-    path: Union[str, Path], file_format: Optional[str] = None, validate: bool = True
+    path: str | Path, file_format: Optional[str] = None, validate: bool = True
 ) -> pd.DataFrame:
     """
     Load and validate sales data from CSV or Parquet.
@@ -71,7 +71,7 @@ def load_sales_data(
     return df
 
 
-def load_metadata(data_dir: Union[str, Path], metadata_type: str = "stores") -> pd.DataFrame:
+def load_metadata(data_dir: str | Path, metadata_type: str = "stores") -> pd.DataFrame:
     """
     Load store or product metadata.
 

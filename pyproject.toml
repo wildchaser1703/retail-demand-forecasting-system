@@ -7,7 +7,7 @@ name = "retail-demand-forecasting"
 version = "1.0.0"
 description = "Industry-standard retail demand forecasting system"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Toshali Mohapatra"}
@@ -16,7 +16,7 @@ keywords = ["machine-learning", "time-series", "forecasting", "retail", "demand-
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py310', 'py311']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -42,7 +42,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
