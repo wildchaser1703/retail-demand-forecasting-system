@@ -28,6 +28,12 @@ class FeatureEngineer:
         if not pd.api.types.is_datetime64_any_dtype(self.df[date_column]):
             self.df[date_column] = pd.to_datetime(self.df[date_column])
 
+    def _ordered(self, group_columns=None):
+        keys = list(group_columns or []) + [self.date_column]
+        if self.df.duplicated(keys).any():
+            raise ValueError("Duplicate time points; provide group_columns for separate series")
+        return self.df.sort_values(keys).copy()
+
     def add_temporal_features(self) -> pd.DataFrame:
         """
         Add temporal features from date column.
@@ -81,52 +87,21 @@ class FeatureEngineer:
         """
         df = self.df.copy()
 
-        # Define major US retail holidays
-        holidays = {
-            "new_year": (1, 1),
-            "valentine": (2, 14),
-            "easter": (4, 15),  # Approximate
-            "memorial_day": (5, 27),  # Last Monday of May (approximate)
-            "independence_day": (7, 4),
-            "labor_day": (9, 2),  # First Monday of September (approximate)
-            "halloween": (10, 31),
-            "thanksgiving": (11, 28),  # Fourth Thursday of November (approximate)
-            "black_friday": (11, 29),  # Day after Thanksgiving (approximate)
-            "christmas": (12, 25),
-        }
+        if country != "US":
+            raise ValueError("Only the US federal holiday calendar is supported")
+        from pandas.tseries.holiday import USFederalHolidayCalendar
 
-        # Initialize holiday columns
-        df["is_holiday"] = 0
-        df["days_to_holiday"] = 365
-        df["days_from_holiday"] = 365
-
-        for holiday_name, (month, day) in holidays.items():
-            # Mark holiday
-            is_holiday = (df[self.date_column].dt.month == month) & (
-                df[self.date_column].dt.day == day
-            )
-            df.loc[is_holiday, "is_holiday"] = 1
-
-            # Calculate days to/from holiday for each year
-            for year in df[self.date_column].dt.year.unique():
-                try:
-                    holiday_date = pd.Timestamp(year=year, month=month, day=day)
-                    year_mask = df[self.date_column].dt.year == year
-
-                    days_diff = (df.loc[year_mask, self.date_column] - holiday_date).dt.days
-
-                    # Days to holiday (negative if before, 0 on holiday, positive if after)
-                    df.loc[year_mask, "days_to_holiday"] = np.minimum(
-                        df.loc[year_mask, "days_to_holiday"], np.abs(days_diff)
-                    )
-
-                    # Days from last holiday
-                    df.loc[year_mask, "days_from_holiday"] = np.minimum(
-                        df.loc[year_mask, "days_from_holiday"], np.abs(days_diff)
-                    )
-                except ValueError:
-                    # Skip invalid dates (e.g., Feb 30)
-                    continue
+        dates = df[self.date_column]
+        holidays = USFederalHolidayCalendar().holidays(
+            start=dates.min() - pd.Timedelta(days=370), end=dates.max() + pd.Timedelta(days=370)
+        )
+        day_values = dates.to_numpy(dtype="datetime64[D]")
+        holiday_values = holidays.to_numpy(dtype="datetime64[D]")
+        next_idx = np.searchsorted(holiday_values, day_values, side="left")
+        prev_idx = np.searchsorted(holiday_values, day_values, side="right") - 1
+        df["is_holiday"] = dates.isin(holidays).astype(int)
+        df["days_to_holiday"] = (holiday_values[next_idx] - day_values).astype(int)
+        df["days_from_holiday"] = (day_values - holiday_values[prev_idx]).astype(int)
 
         self.df = df
         return df
@@ -157,8 +132,10 @@ class FeatureEngineer:
         if lags is None:
             lags = [1, 7, 14, 28]
 
-        df = self.df.copy()
+        df = self._ordered(group_columns)
 
+        if not lags or any(lag < 1 for lag in lags):
+            raise ValueError("Lags must be positive")
         if group_columns:
             for lag in lags:
                 df[f"{target_column}_lag_{lag}"] = df.groupby(group_columns)[target_column].shift(
@@ -202,52 +179,23 @@ class FeatureEngineer:
         if stats is None:
             stats = ["mean", "std", "min", "max"]
 
-        df = self.df.copy()
+        df = self._ordered(group_columns)
 
+        if not windows or any(window < 2 for window in windows):
+            raise ValueError("Rolling windows must be at least 2")
         for window in windows:
             for stat in stats:
-                col_name = f"{target_column}_rolling_{window}_{stat}"
+                if stat not in {"mean", "std", "min", "max"}:
+                    raise ValueError(f"Unsupported rolling statistic: {stat}")
 
-                if group_columns:
-                    if stat == "mean":
-                        df[col_name] = (
-                            df.groupby(group_columns)[target_column]
-                            .rolling(window=window, min_periods=1)
-                            .mean()
-                            .reset_index(level=list(range(len(group_columns))), drop=True)
-                        )
-                    elif stat == "std":
-                        df[col_name] = (
-                            df.groupby(group_columns)[target_column]
-                            .rolling(window=window, min_periods=1)
-                            .std()
-                            .reset_index(level=list(range(len(group_columns))), drop=True)
-                        )
-                    elif stat == "min":
-                        df[col_name] = (
-                            df.groupby(group_columns)[target_column]
-                            .rolling(window=window, min_periods=1)
-                            .min()
-                            .reset_index(level=list(range(len(group_columns))), drop=True)
-                        )
-                    elif stat == "max":
-                        df[col_name] = (
-                            df.groupby(group_columns)[target_column]
-                            .rolling(window=window, min_periods=1)
-                            .max()
-                            .reset_index(level=list(range(len(group_columns))), drop=True)
-                        )
-                else:
-                    if stat == "mean":
-                        df[col_name] = (
-                            df[target_column].rolling(window=window, min_periods=1).mean()
-                        )
-                    elif stat == "std":
-                        df[col_name] = df[target_column].rolling(window=window, min_periods=1).std()
-                    elif stat == "min":
-                        df[col_name] = df[target_column].rolling(window=window, min_periods=1).min()
-                    elif stat == "max":
-                        df[col_name] = df[target_column].rolling(window=window, min_periods=1).max()
+                def compute(values):
+                    return values.shift(1).rolling(window, min_periods=1).agg(stat)
+
+                df[f"{target_column}_rolling_{window}_{stat}"] = (
+                    df.groupby(group_columns)[target_column].transform(compute)
+                    if group_columns
+                    else compute(df[target_column])
+                )
 
         self.df = df
         return df
@@ -278,20 +226,26 @@ class FeatureEngineer:
         if periods is None:
             periods = [1, 7]
 
-        df = self.df.copy()
+        df = self._ordered(group_columns)
 
+        if not periods or any(period < 1 for period in periods):
+            raise ValueError("Difference periods must be positive")
         for period in periods:
             col_name = f"{target_column}_diff_{period}"
 
             if group_columns:
-                df[col_name] = df.groupby(group_columns)[target_column].diff(period)
+                df[col_name] = df.groupby(group_columns)[target_column].transform(
+                    lambda x: x.shift(1).diff(period)
+                )
             else:
-                df[col_name] = df[target_column].diff(period)
+                df[col_name] = df[target_column].shift(1).diff(period)
 
         self.df = df
         return df
 
-    def add_promotion_features(self, promo_column: str = "is_promo") -> pd.DataFrame:
+    def add_promotion_features(
+        self, promo_column: str = "is_promo", group_columns=None
+    ) -> pd.DataFrame:
         """
         Add promotion-related features.
 
@@ -308,27 +262,18 @@ class FeatureEngineer:
         if promo_column not in self.df.columns:
             return self.df
 
-        df = self.df.copy()
-
-        # Days since last promotion
-        df["days_since_promo"] = 0
-        promo_dates = df[df[promo_column] == 1].index
-
-        for idx in df.index:
-            prev_promos = promo_dates[promo_dates < idx]
-            if len(prev_promos) > 0:
-                df.loc[idx, "days_since_promo"] = idx - prev_promos[-1]
-            else:
-                df.loc[idx, "days_since_promo"] = 999  # No previous promo
-
-        # Days to next promotion
-        df["days_to_promo"] = 0
-        for idx in df.index:
-            next_promos = promo_dates[promo_dates > idx]
-            if len(next_promos) > 0:
-                df.loc[idx, "days_to_promo"] = next_promos[0] - idx
-            else:
-                df.loc[idx, "days_to_promo"] = 999  # No upcoming promo
+        df = self._ordered(group_columns)
+        df["days_since_promo"] = 999
+        df["days_to_promo"] = 999
+        groups = df.groupby(group_columns) if group_columns else [(None, df)]
+        for _, group in groups:
+            dates = group[self.date_column].where(group[promo_column].eq(1))
+            df.loc[group.index, "days_since_promo"] = (
+                group[self.date_column] - dates.ffill()
+            ).dt.days.fillna(999)
+            df.loc[group.index, "days_to_promo"] = (
+                dates.bfill() - group[self.date_column]
+            ).dt.days.fillna(999)
 
         self.df = df
         return df
@@ -340,7 +285,7 @@ class FeatureEngineer:
         include_lags: bool = True,
         include_rolling: bool = True,
         include_diff: bool = True,
-        include_promo: bool = True,
+        include_promo: bool = False,
         target_column: str = "sales",
         group_columns: Optional[List[str]] = None,
     ) -> pd.DataFrame:
@@ -387,6 +332,6 @@ class FeatureEngineer:
             self.add_diff_features(target_column=target_column, group_columns=group_columns)
 
         if include_promo and "is_promo" in self.df.columns:
-            self.add_promotion_features()
+            self.add_promotion_features(group_columns=group_columns)
 
         return self.df

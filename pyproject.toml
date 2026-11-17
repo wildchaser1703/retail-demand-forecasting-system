@@ -5,9 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "retail-demand-forecasting"
 version = "1.0.0"
-description = "Industry-standard retail demand forecasting system"
+description = "Retail forecasting workbench with fixed-origin temporal evaluation"
 readme = "README.md"
-requires-python = ">=3.10"
+dynamic = ["dependencies"]
+requires-python = ">=3.11,<3.13"
 license = {text = "MIT"}
 authors = [
     {name = "Toshali Mohapatra"}
@@ -92,3 +93,9 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+include = ["src*"]

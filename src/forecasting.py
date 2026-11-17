@@ -3,6 +3,7 @@ Unified forecasting interface and pipeline.
 """
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 from typing import Optional, Any
@@ -64,118 +65,6 @@ class BaseForecaster(ABC):
         return self.predict(steps)
 
 
-class ForecastingPipeline:
-    """
-    Pipeline for end-to-end forecasting workflow.
-    """
-
-    def __init__(
-        self,
-        preprocessor: Optional[Any] = None,
-        feature_engineer: Optional[Any] = None,
-        model: Optional[BaseForecaster] = None,
-    ):
-        """
-        Initialize forecasting pipeline.
-
-        Parameters
-        ----------
-        preprocessor : object, optional
-            Data preprocessor.
-        feature_engineer : object, optional
-            Feature engineer.
-        model : BaseForecaster, optional
-            Forecasting model.
-        """
-        self.preprocessor = preprocessor
-        self.feature_engineer = feature_engineer
-        self.model = model
-        self.is_fitted = False
-
-    def fit(self, df: pd.DataFrame, target_col: str = "sales", **kwargs) -> "ForecastingPipeline":
-        """
-        Fit the pipeline.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            Training dataframe.
-        target_col : str, default='sales'
-            Name of target column.
-        **kwargs : dict
-            Additional arguments for model fitting.
-
-        Returns
-        -------
-        ForecastingPipeline
-            Fitted pipeline.
-        """
-        data = df.copy()
-
-        # Preprocessing
-        if self.preprocessor is not None:
-            data = self.preprocessor.fit_transform(data)
-
-        # Feature engineering
-        if self.feature_engineer is not None:
-            data = self.feature_engineer.fit_transform(data)
-
-        # Fit model
-        if self.model is not None:
-            self.model.fit(data[target_col], **kwargs)
-
-        self.is_fitted = True
-        return self
-
-    def predict(self, steps: int, **kwargs) -> np.ndarray:
-        """
-        Generate forecasts.
-
-        Parameters
-        ----------
-        steps : int
-            Number of steps ahead to forecast.
-        **kwargs : dict
-            Additional arguments for prediction.
-
-        Returns
-        -------
-        np.ndarray
-            Forecasted values.
-        """
-        if not self.is_fitted:
-            raise ValueError("Pipeline must be fitted before prediction.")
-
-        if self.model is None:
-            raise ValueError("No model specified in pipeline.")
-
-        return self.model.predict(steps, **kwargs)
-
-    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Transform new data through preprocessing and feature engineering.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            Input dataframe.
-
-        Returns
-        -------
-        pd.DataFrame
-            Transformed dataframe.
-        """
-        data = df.copy()
-
-        if self.preprocessor is not None:
-            data = self.preprocessor.transform(data)
-
-        if self.feature_engineer is not None:
-            data = self.feature_engineer.transform(data)
-
-        return data
-
-
 class MultiSeriesForecaster:
     """
     Forecaster for multiple time series (e.g., multiple stores/products).
@@ -215,13 +104,14 @@ class MultiSeriesForecaster:
         MultiSeriesForecaster
             Fitted forecaster.
         """
+        self.models = {}
         # Group by specified columns
         for group_vals, group_df in df.groupby(self.group_columns):
             # Create a copy of the base model for this group
-            model = type(self.base_model)(**self.base_model.__dict__)
+            model = deepcopy(self.base_model)
 
             # Fit model
-            model.fit(group_df[target_col].values, **kwargs)
+            model.fit(group_df.sort_values("date")[target_col].values, **kwargs)
 
             # Store model
             self.models[group_vals] = model

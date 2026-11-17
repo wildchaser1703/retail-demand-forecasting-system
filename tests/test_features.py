@@ -74,7 +74,7 @@ def test_rolling_features(sample_data):
     assert "sales_rolling_7_std" in result.columns
 
     # Check that rolling mean is calculated correctly
-    rolling_mean_7 = result["sales"].rolling(window=7, min_periods=1).mean()
+    rolling_mean_7 = result["sales"].shift(1).rolling(window=7, min_periods=1).mean()
     np.testing.assert_array_almost_equal(
         result["sales_rolling_7_mean"].values, rolling_mean_7.values
     )

@@ -6,8 +6,6 @@ import numpy as np
 import pandas as pd
 from typing import Optional, List
 from sklearn.ensemble import RandomForestRegressor
-from xgboost import XGBRegressor
-from lightgbm import LGBMRegressor
 import joblib
 
 
@@ -36,6 +34,8 @@ class MLForecaster:
     def _initialize_model(self):
         """Initialize the model based on model_type."""
         if self.model_type == "xgboost":
+            from xgboost import XGBRegressor
+
             default_params = {
                 "objective": "reg:squarederror",
                 "max_depth": 6,
@@ -49,6 +49,8 @@ class MLForecaster:
             self.model = XGBRegressor(**default_params)
 
         elif self.model_type == "lightgbm":
+            from lightgbm import LGBMRegressor
+
             default_params = {
                 "objective": "regression",
                 "metric": "mae",
@@ -253,7 +255,15 @@ class TimeSeriesMLForecaster:
         """
         self.model_type = model_type
         self.lags = lags if lags is not None else [1, 7, 14, 28]
-        self.rolling_windows = rolling_windows if rolling_windows is not None else [7, 14, 28]
+        self.rolling_windows = (
+            rolling_windows if rolling_windows is not None else [7, 14, 28]
+        )
+        if not self.lags or any(lag < 1 for lag in self.lags):
+            raise ValueError("Lags must be positive")
+        if not self.rolling_windows or any(
+            window < 2 for window in self.rolling_windows
+        ):
+            raise ValueError("Rolling windows must be at least 2")
         self.model_params = model_params
         self.forecaster = MLForecaster(model_type=model_type, **model_params)
 
@@ -279,10 +289,18 @@ class TimeSeriesMLForecaster:
 
         # Rolling features
         for window in self.rolling_windows:
-            features[f"rolling_mean_{window}"] = series.rolling(window=window).mean()
-            features[f"rolling_std_{window}"] = series.rolling(window=window).std()
-            features[f"rolling_min_{window}"] = series.rolling(window=window).min()
-            features[f"rolling_max_{window}"] = series.rolling(window=window).max()
+            features[f"rolling_mean_{window}"] = (
+                series.shift(1).rolling(window=window).mean()
+            )
+            features[f"rolling_std_{window}"] = (
+                series.shift(1).rolling(window=window).std()
+            )
+            features[f"rolling_min_{window}"] = (
+                series.shift(1).rolling(window=window).min()
+            )
+            features[f"rolling_max_{window}"] = (
+                series.shift(1).rolling(window=window).max()
+            )
 
         # Temporal features if index is datetime
         if isinstance(series.index, pd.DatetimeIndex):
@@ -323,6 +341,18 @@ class TimeSeriesMLForecaster:
         TimeSeriesMLForecaster
             Fitted forecaster.
         """
+        if not series.index.is_unique or not series.index.is_monotonic_increasing:
+            raise ValueError("Series index must be unique and increasing")
+        if not np.isfinite(series.to_numpy()).all():
+            raise ValueError("Series must contain finite values")
+        if isinstance(series.index, pd.DatetimeIndex):
+            self.frequency = pd.infer_freq(series.index)
+            if self.frequency is None:
+                raise ValueError("Series must have a regular frequency")
+        self.history = series.copy()
+        self.exog_columns = list(exog.columns) if exog is not None else []
+        if exog is not None and not exog.index.equals(series.index):
+            raise ValueError("Exogenous features must align with the series index")
         # Create features
         X = self.create_features(series)
 
@@ -335,6 +365,8 @@ class TimeSeriesMLForecaster:
         mask = ~X.isna().any(axis=1)
         X = X[mask]
         y = y[mask]
+        if X.empty:
+            raise ValueError("Insufficient history for requested lags/windows")
 
         # Prepare evaluation set if provided
         eval_set = None
@@ -351,7 +383,9 @@ class TimeSeriesMLForecaster:
             eval_set = [(X_eval, y_eval)]
 
         # Fit model
-        self.forecaster.fit(X, y, eval_set=eval_set, early_stopping_rounds=early_stopping_rounds)
+        self.forecaster.fit(
+            X, y, eval_set=eval_set, early_stopping_rounds=early_stopping_rounds
+        )
 
         return self
 
@@ -371,12 +405,41 @@ class TimeSeriesMLForecaster:
         np.ndarray
             Forecasted values.
         """
-        # Note: This is a simplified implementation
-        # For production, you'd want iterative forecasting
-        raise NotImplementedError(
-            "Multi-step forecasting requires iterative prediction. "
-            "Use the model with pre-computed features instead."
-        )
+        if not hasattr(self, "history") or self.forecaster.model is None:
+            raise ValueError("Fit the model before prediction")
+        if not isinstance(steps, int) or steps < 1:
+            raise ValueError("steps must be a positive integer")
+        if self.exog_columns:
+            if (
+                exog is None
+                or len(exog) != steps
+                or list(exog.columns) != self.exog_columns
+            ):
+                raise ValueError(
+                    "Provide aligned future exogenous features for every step"
+                )
+        elif exog is not None:
+            raise ValueError("Model was fitted without exogenous features")
+        history = self.history.copy()
+        forecasts = []
+        for step in range(steps):
+            next_index = (
+                history.index[-1] + pd.tseries.frequencies.to_offset(self.frequency)
+                if isinstance(history.index, pd.DatetimeIndex)
+                else history.index[-1] + 1
+            )
+            if exog is not None and exog.index[step] != next_index:
+                raise ValueError("Future exogenous index must match forecast dates")
+            extended = pd.concat([history, pd.Series([np.nan], index=[next_index])])
+            features = self.create_features(extended).iloc[[-1]].copy()
+            if exog is not None:
+                for col in self.exog_columns:
+                    features[col] = exog.iloc[step][col]
+            prediction = float(self.forecaster.predict(features)[0])
+            forecasts.append(prediction)
+            extended.iloc[-1] = prediction
+            history = extended
+        return np.asarray(forecasts)
 
     def get_feature_importance(self, top_n: Optional[int] = 20) -> pd.DataFrame:
         """Get feature importance."""
